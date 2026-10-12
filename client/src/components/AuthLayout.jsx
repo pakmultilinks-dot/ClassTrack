@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiActivity, FiCheckCircle, FiShield } from "react-icons/fi";
+import Logo from "./Logo";
 
 const trustItems = [
   { label: "Secure identity workflows", icon: FiShield },
@@ -25,11 +26,8 @@ const AuthLayout = ({ badge, title, subtitle, children }) => {
 
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col">
         <header className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-brand-primary to-brand-secondary font-extrabold shadow-glow">
-              CT
-            </span>
-            <span className="text-lg font-bold tracking-normal">ClassTrack</span>
+          <Link to="/">
+            <Logo size={44} />
           </Link>
           <Link
             to="/"

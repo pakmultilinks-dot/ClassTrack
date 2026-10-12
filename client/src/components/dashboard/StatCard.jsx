@@ -12,7 +12,7 @@ const StatCard = ({ title, value, trend, icon: Icon, accent = "from-brand-primar
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-brand-muted">{title}</p>
-          <p className="mt-3 text-3xl font-extrabold text-white">{value}</p>
+          <p className="tabular mt-3 text-3xl font-bold text-white">{value}</p>
           <p className="mt-3 text-sm font-semibold text-emerald-300">{trend}</p>
         </div>
         <span className={`grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br ${accent} text-white shadow-glow`}>

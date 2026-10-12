@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiArrowRight } from "react-icons/fi";
+import Logo from "./Logo";
 
 const navLinks = [
   { label: "Home", href: "#home" },
@@ -19,10 +20,7 @@ const Navbar = () => {
         className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/10 bg-black/78 px-4 py-3 shadow-soft backdrop-blur-2xl sm:px-6"
       >
         <a href="#home" className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-primary to-brand-secondary font-extrabold shadow-glow">
-            CT
-          </span>
-          <span className="text-lg font-bold tracking-normal text-white">ClassTrack</span>
+          <Logo size={40} />
         </a>
 
         <div className="hidden items-center gap-8 md:flex">

@@ -13,6 +13,7 @@ import {
   FiUsers
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
+import Logo from "../Logo";
 
 const links = [
   { label: "Dashboard", icon: FiGrid, to: "/dashboard", roles: ["admin", "teacher", "student"] },
@@ -53,11 +54,9 @@ const Sidebar = ({ isOpen = false, onClose }) => {
       <div className="flex h-full flex-col rounded-[1.7rem] border border-white/10 bg-white/[0.035] p-4">
         <div className="flex items-center justify-between gap-3 px-2 py-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-brand-primary to-brand-secondary font-extrabold shadow-glow">
-              CT
-            </span>
+            <Logo size={44} showWordmark={false} />
             <div>
-              <p className="text-lg font-bold text-white">ClassTrack</p>
+              <p className="font-display text-lg font-bold text-white">ClassTrack</p>
               <p className="text-xs font-medium capitalize text-brand-muted">{user?.role || "user"} Control</p>
             </div>
           </div>

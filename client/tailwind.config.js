@@ -4,8 +4,11 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        display: ["\"Space Grotesk\"", "Sora", "sans-serif"],
         sora: ["Sora", "sans-serif"],
-        dmsans: ["DM Sans", "sans-serif"]
+        dmsans: ["DM Sans", "sans-serif"],
+        sans: ["Inter", "\"DM Sans\"", "system-ui", "sans-serif"],
+        mono: ["\"JetBrains Mono\"", "ui-monospace", "monospace"]
       },
       colors: {
         brand: {
