@@ -52,10 +52,8 @@ const Register = () => {
         password: formData.password,
         role: formData.role
       });
-      navigate("/dashboard");
     } catch (apiError) {
       setError(apiError.response?.data?.message || "Registration failed. Please try again.");
-    } finally {
       setIsSubmitting(false);
     }
   };

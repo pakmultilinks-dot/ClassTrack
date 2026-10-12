@@ -1,17 +1,22 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getMe, loginUser, registerUser } from "../services/authService";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const sessionVersion = useRef(0);
 
   const saveSession = (authData) => {
+    if (!authData?.token) {
+      throw new Error("Invalid login response: missing token");
+    }
+    sessionVersion.current += 1;
     localStorage.setItem("token", authData.token);
     setToken(authData.token);
-    setUser(authData.user);
+    setUser(authData.user || null);
   };
 
   const login = async (data) => {
@@ -27,6 +32,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    sessionVersion.current += 1;
     localStorage.removeItem("token");
     localStorage.removeItem("classtrack_token");
     setToken(null);
@@ -34,6 +40,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const checkAuth = async () => {
+    const myVersion = sessionVersion.current;
     const savedToken = localStorage.getItem("token");
 
     if (!savedToken) {
@@ -44,13 +51,17 @@ export const AuthProvider = ({ children }) => {
     try {
       setToken(savedToken);
       const data = await getMe();
+      if (sessionVersion.current !== myVersion) return;
       setUser(data.user);
     } catch (error) {
+      if (sessionVersion.current !== myVersion) return;
       if (error.response?.status === 401) {
         logout();
       }
     } finally {
-      setLoading(false);
+      if (sessionVersion.current === myVersion) {
+        setLoading(false);
+      }
     }
   };
 
@@ -60,8 +71,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const handleSessionExpired = () => {
-      setToken(null);
-      setUser(null);
+      logout();
     };
 
     window.addEventListener("classtrack:session-expired", handleSessionExpired);
@@ -93,7 +103,7 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
+    throw new Error("useAuth must be used inside AuthContext");
   }
 
   return context;

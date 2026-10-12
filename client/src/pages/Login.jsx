@@ -41,10 +41,8 @@ const Login = () => {
         email: formData.email,
         password: formData.password
       });
-      navigate("/dashboard");
     } catch (apiError) {
       setError(apiError.response?.data?.message || "Login failed. Please try again.");
-    } finally {
       setIsSubmitting(false);
     }
   };
