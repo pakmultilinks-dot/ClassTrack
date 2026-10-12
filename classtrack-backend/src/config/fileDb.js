@@ -58,22 +58,37 @@ const initDb = async () => {
 };
 
 /**
- * Upload the current database JSON to Vercel Blob (fire-and-forget).
+ * Upload the current database JSON to Vercel Blob.
+ * Returns a promise that resolves when the upload completes.
  */
+let pendingUpload = null;
 const syncToBlob = () => {
-  if (!useBlob) return;
+  if (!useBlob) return Promise.resolve();
   try {
     const { put } = getBlob();
     const data = fs.readFileSync(databasePath, "utf-8");
-    put(BLOB_KEY, data, {
+    pendingUpload = put(BLOB_KEY, data, {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false
     }).catch((err) => {
       console.error("Blob upload failed:", err.message);
     });
+    return pendingUpload;
   } catch (err) {
     console.error("Blob sync failed:", err.message);
+    return Promise.resolve();
+  }
+};
+
+/**
+ * Wait for any pending Blob upload to complete.
+ * Call before the serverless function returns.
+ */
+const flushBlob = async () => {
+  if (pendingUpload) {
+    await pendingUpload;
+    pendingUpload = null;
   }
 };
 
@@ -249,5 +264,6 @@ module.exports = {
   insertOne,
   updateById,
   deleteById,
-  initDb
+  initDb,
+  flushBlob
 };
