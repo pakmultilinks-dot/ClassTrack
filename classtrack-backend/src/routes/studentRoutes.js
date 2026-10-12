@@ -1,6 +1,7 @@
 const express = require("express");
 const {
   createStudent,
+  bulkImportStudents,
   getStudents,
   getStudentById,
   updateStudent,
@@ -12,6 +13,8 @@ const { authorizeRoles } = require("../middleware/roleMiddleware");
 const router = express.Router();
 
 router.use(protect);
+
+router.post("/bulk", authorizeRoles("admin", "teacher"), bulkImportStudents);
 
 router
   .route("/")

@@ -335,8 +335,95 @@ const deleteStudent = async (req, res, next) => {
   }
 };
 
+/**
+ * Bulk import students from an array (e.g. parsed from CSV on the client).
+ * Returns per-row results so partial failures don't block the whole batch.
+ */
+const bulkImportStudents = async (req, res, next) => {
+  try {
+    const rows = req.body.students;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Provide a non-empty 'students' array"
+      });
+    }
+
+    if (rows.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: "Maximum 1000 students per import"
+      });
+    }
+
+    const created = [];
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || {};
+      const studentId = typeof row.studentId === "string" ? row.studentId.trim() : "";
+      const fullName = typeof row.fullName === "string" ? row.fullName.trim() : "";
+      const rollNumber = typeof row.rollNumber === "string" ? row.rollNumber.trim() : "";
+      const classId = typeof row.classId === "string" ? row.classId.trim() : "";
+      const email = typeof row.email === "string" ? row.email.trim().toLowerCase() : "";
+      const phone = typeof row.phone === "string" ? row.phone.trim() : "";
+      const section = typeof row.section === "string" ? row.section.trim() : "";
+
+      if (!studentId || !fullName || !rollNumber) {
+        errors.push({ row: i + 1, message: "studentId, fullName, and rollNumber are required" });
+        continue;
+      }
+
+      if (classId) {
+        const classItem = await findActiveClassById(classId);
+        if (!classItem) {
+          errors.push({ row: i + 1, message: `Class not found: ${classId}` });
+          continue;
+        }
+      }
+
+      if (await hasDuplicateStudentId(studentId)) {
+        errors.push({ row: i + 1, message: `Duplicate studentId: ${studentId}` });
+        continue;
+      }
+
+      if (await hasDuplicateRollNumber(rollNumber, classId)) {
+        errors.push({ row: i + 1, message: `Duplicate rollNumber in class: ${rollNumber}` });
+        continue;
+      }
+
+      const student = await createStudentRecord({
+        studentId,
+        fullName,
+        email,
+        phone,
+        rollNumber,
+        classId,
+        section,
+        faceRegistered: false,
+        faceDescriptors: [],
+        isActive: true
+      });
+
+      created.push(student);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Imported ${created.length} of ${rows.length} students`,
+      created: created.length,
+      failed: errors.length,
+      errors
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createStudent,
+  bulkImportStudents,
   getStudents,
   getStudentById,
   updateStudent,
