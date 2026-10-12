@@ -1,9 +1,9 @@
-const mongoose = require("mongoose");
+const { isFileDbMode } = require("../utils/dbMode");
 const { randomUUID } = require("crypto");
 const Student = require("../models/Student");
 const { findAll, updateById } = require("../config/fileDb");
 
-const isTestEnvironment = () => process.env.NODE_ENV === "test" || mongoose.connection.readyState !== 1;
+const isTestEnvironment = isFileDbMode;
 
 const getActiveStudent = (studentId) => {
   if (isTestEnvironment()) {

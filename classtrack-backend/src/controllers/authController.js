@@ -1,11 +1,11 @@
 const bcrypt = require("bcryptjs");
-const mongoose = require("mongoose");
+const { isFileDbMode } = require("../utils/dbMode");
 const { findAll, insertOne, updateById } = require("../config/fileDb");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 
 const allowedRoles = ["admin", "teacher", "student"];
-const isTestEnvironment = () => process.env.NODE_ENV === "test" || mongoose.connection.readyState !== 1;
+const isTestEnvironment = isFileDbMode;
 
 const formatUserResponse = (user) => ({
   id: user.id || user._id,

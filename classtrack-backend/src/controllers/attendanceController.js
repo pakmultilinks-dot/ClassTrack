@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const { isFileDbMode } = require("../utils/dbMode");
 const Attendance = require("../models/Attendance");
 const Student = require("../models/Student");
 const ClassModel = require("../models/Class");
@@ -8,7 +8,7 @@ const { findAll, insertOne } = require("../config/fileDb");
 const allowedStatuses = ["present", "absent", "late"];
 const activeFilter = { isActive: { $ne: false } };
 
-const isTestEnvironment = () => process.env.NODE_ENV === "test" || mongoose.connection.readyState !== 1;
+const isTestEnvironment = isFileDbMode;
 
 const getTodayDate = () => new Date().toISOString().slice(0, 10);
 

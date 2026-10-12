@@ -3,10 +3,79 @@ const path = require("path");
 const { randomUUID } = require("crypto");
 const bcrypt = require("bcryptjs");
 
+// Vercel Blob persistence for serverless deployments.
+// When BLOB_READ_WRITE_TOKEN is set (Vercel production), the JSON database
+// is backed by Vercel Blob so data survives across serverless invocations.
+// Locally (no token), it uses the data/ directory as before.
+const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
+const BLOB_KEY = "classtrack-database.json";
+
 const databaseFileName = process.env.NODE_ENV === "test"
   ? "test-database.json"
   : "database.json";
-const databasePath = path.join(__dirname, "../../data", databaseFileName);
+const databasePath = useBlob
+  ? path.join("/tmp", databaseFileName)
+  : path.join(__dirname, "../../data", databaseFileName);
+
+let blobModule = null;
+const getBlob = () => {
+  if (!useBlob) return null;
+  if (!blobModule) {
+    blobModule = require("@vercel/blob");
+  }
+  return blobModule;
+};
+
+/**
+ * Download the database from Vercel Blob to /tmp on cold start.
+ * Call once before handling requests in serverless mode.
+ */
+const initDb = async () => {
+  if (!useBlob) {
+    ensureDatabaseFile();
+    return;
+  }
+
+  const { list } = getBlob();
+  try {
+    const { blobs } = await list({ prefix: BLOB_KEY });
+    const existing = blobs.find((b) => b.pathname === BLOB_KEY);
+    if (existing) {
+      const response = await fetch(existing.url);
+      const text = await response.text();
+      const dir = path.dirname(databasePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(databasePath, text);
+      return;
+    }
+  } catch (err) {
+    console.error("Blob download failed, starting with empty DB:", err.message);
+  }
+
+  ensureDatabaseFile();
+};
+
+/**
+ * Upload the current database JSON to Vercel Blob (fire-and-forget).
+ */
+const syncToBlob = () => {
+  if (!useBlob) return;
+  try {
+    const { put } = getBlob();
+    const data = fs.readFileSync(databasePath, "utf-8");
+    put(BLOB_KEY, data, {
+      access: "public",
+      contentType: "application/json",
+      addRandomSuffix: false
+    }).catch((err) => {
+      console.error("Blob upload failed:", err.message);
+    });
+  } catch (err) {
+    console.error("Blob sync failed:", err.message);
+  }
+};
 
 const defaultData = {
   users: [],
@@ -96,7 +165,7 @@ const readDB = () => {
 
 const writeDB = (data) => {
   fs.writeFileSync(databasePath, JSON.stringify(data, null, 2));
-  if (process.env.NODE_ENV !== "test") {
+  if (!useBlob && process.env.NODE_ENV !== "test") {
     const altPath = path.join(__dirname, "../../data", "db.json");
     try {
       fs.writeFileSync(altPath, JSON.stringify(data, null, 2));
@@ -104,6 +173,8 @@ const writeDB = (data) => {
       // ignore
     }
   }
+  // Persist to Vercel Blob in serverless mode (async, non-blocking)
+  syncToBlob();
 };
 
 const findAll = (collectionName) => {
@@ -177,5 +248,6 @@ module.exports = {
   findById,
   insertOne,
   updateById,
-  deleteById
+  deleteById,
+  initDb
 };

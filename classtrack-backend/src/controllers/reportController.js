@@ -1,11 +1,11 @@
-const mongoose = require("mongoose");
+const { isFileDbMode } = require("../utils/dbMode");
 const Attendance = require("../models/Attendance");
 const Student = require("../models/Student");
 const ClassModel = require("../models/Class");
 const { findAll } = require("../config/fileDb");
 
 const activeFilter = { isActive: { $ne: false } };
-const isTestEnvironment = () => process.env.NODE_ENV === "test" || mongoose.connection.readyState !== 1;
+const isTestEnvironment = isFileDbMode;
 
 const calculateAttendanceStats = (records) => {
   const presentCount = records.filter((record) => record.status === "present").length;

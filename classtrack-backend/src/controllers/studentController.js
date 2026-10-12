@@ -1,9 +1,10 @@
 const Student = require("../models/Student");
 const ClassModel = require("../models/Class");
 const { findAll, findById, insertOne, updateById } = require("../config/fileDb");
+const { isFileDbMode } = require("../utils/dbMode");
 
 const activeFilter = { isActive: { $ne: false } };
-const isTestEnvironment = () => process.env.NODE_ENV === "test";
+const isTestEnvironment = isFileDbMode;
 
 const getActiveStudents = async () => {
   if (isTestEnvironment()) {
