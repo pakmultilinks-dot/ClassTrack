@@ -7,7 +7,8 @@ export const loadFaceAPIModels = async () => {
     return modelLoadPromise;
   }
 
-  const modelPath = "/models";
+  // Models served via jsDelivr CDN from the GitHub repo (free, no bundle bloat)
+  const modelPath = "https://cdn.jsdelivr.net/gh/pakmultilinks-dot/ClassTrack@main/client/public/models";
 
   modelLoadPromise = Promise.all([
     faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),

@@ -56,7 +56,7 @@ const Dashboard = () => {
       } catch (error) {
         setSummaryError(
           error.response?.data?.message ||
-          "Unable to load dashboard data. Please make sure the backend is running on http://localhost:5000."
+          "Unable to load dashboard data. Please check your connection and try again."
         );
       } finally {
         setLoadingSummary(false);
