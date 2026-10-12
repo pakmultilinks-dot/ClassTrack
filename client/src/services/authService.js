@@ -14,3 +14,8 @@ export const getMe = async () => {
   const response = await api.get("/auth/me");
   return response.data;
 };
+
+export const getTeachers = async () => {
+  const response = await api.get("/auth/teachers");
+  return response.data;
+};

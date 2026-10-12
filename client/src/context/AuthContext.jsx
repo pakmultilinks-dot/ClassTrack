@@ -46,7 +46,9 @@ export const AuthProvider = ({ children }) => {
       const data = await getMe();
       setUser(data.user);
     } catch (error) {
-      logout();
+      if (error.response?.status === 401) {
+        logout();
+      }
     } finally {
       setLoading(false);
     }

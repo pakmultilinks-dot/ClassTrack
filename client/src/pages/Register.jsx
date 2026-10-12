@@ -1,15 +1,15 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiArrowRight, FiLock, FiMail, FiUser } from "react-icons/fi";
 import AuthLayout from "../components/AuthLayout";
 import { useAuth } from "../context/AuthContext";
 
-const roles = ["Admin", "Teacher", "Student"];
+const roles = ["Teacher", "Student"];
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, user } = useAuth();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -19,6 +19,12 @@ const Register = () => {
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -131,7 +137,7 @@ const Register = () => {
 
         <div>
           <span className="mb-3 block text-sm font-semibold text-white">Register as</span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {roles.map((role) => (
               <label
                 key={role}
@@ -153,6 +159,9 @@ const Register = () => {
               </label>
             ))}
           </div>
+          <p className="mt-2 text-xs text-brand-muted">
+            Admin accounts are created by an existing administrator.
+          </p>
         </div>
 
         {error && (

@@ -10,7 +10,7 @@ import {
 } from "react-icons/fi";
 import ManualAttendanceTable from "../components/attendance/ManualAttendanceTable";
 import DashboardLayout from "../layouts/DashboardLayout";
-import { markManualAttendance } from "../services/attendanceService";
+import { bulkMarkAttendance } from "../services/attendanceService";
 import { getClasses } from "../services/classService";
 import { getStudents } from "../services/studentService";
 
@@ -19,8 +19,10 @@ const ManualAttendance = () => {
   const [students, setStudents] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [statuses, setStatuses] = useState({});
   const [results, setResults] = useState({});
+  const [saveSummary, setSaveSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -83,7 +85,8 @@ const ManualAttendance = () => {
   useEffect(() => {
     setStatuses({});
     setResults({});
-  }, [selectedClassId, selectedSubject]);
+    setSaveSummary(null);
+  }, [selectedClassId, selectedSubject, selectedDate]);
 
   const handleStatusChange = (studentId, status) => {
     setStatuses((current) => ({
@@ -113,16 +116,6 @@ const ManualAttendance = () => {
     setError("");
   };
 
-  const buildResult = (data) => {
-    const isDuplicate = data.message?.toLowerCase().includes("already marked");
-
-    return {
-      type: isDuplicate ? "duplicate" : "success",
-      message: data.message || "Saved",
-      attendance: data.attendance
-    };
-  };
-
   const saveAttendance = async () => {
     if (!selectedClassId || !selectedSubject) {
       setError("Select a class and subject before saving attendance.");
@@ -138,29 +131,32 @@ const ManualAttendance = () => {
 
     setSaving(true);
     setError("");
-    const nextResults = {};
+    setSaveSummary(null);
 
-    for (const [studentId, status] of selectedEntries) {
-      try {
-        const data = await markManualAttendance({
-          studentId,
-          classId: selectedClassId,
-          subject: selectedSubject,
-          status
-        });
+    try {
+      const data = await bulkMarkAttendance({
+        classId: selectedClassId,
+        subject: selectedSubject,
+        date: selectedDate,
+        records: selectedEntries.map(([studentId, status]) => ({ studentId, status }))
+      });
 
-        nextResults[studentId] = buildResult(data);
-      } catch (apiError) {
-        nextResults[studentId] = {
-          type: "error",
-          message: apiError.response?.data?.message || "Failed to save"
-        };
-      }
-
-      setResults({ ...nextResults });
+      const r = data.results || {};
+      const nextResults = {};
+      selectedEntries.forEach(([studentId]) => {
+        nextResults[studentId] = { type: "success", message: "Saved" };
+      });
+      setResults(nextResults);
+      setSaveSummary({
+        marked: r.marked || 0,
+        updated: r.updated || 0,
+        errors: r.errors || []
+      });
+    } catch (apiError) {
+      setError(apiError.response?.data?.message || "Failed to save attendance. Please try again.");
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
   };
 
   return (
@@ -206,6 +202,20 @@ const ManualAttendance = () => {
           </div>
         )}
 
+        {saveSummary && (
+          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm font-semibold leading-6 text-emerald-100">
+            Saved: {saveSummary.marked} marked, {saveSummary.updated} updated
+            {saveSummary.errors.length > 0 && `, ${saveSummary.errors.length} errors`}
+            {saveSummary.errors.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs font-normal">
+                {saveSummary.errors.slice(0, 5).map((e, i) => (
+                  <li key={i}>{e.studentId}: {e.message}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         <section className="glass-panel rounded-3xl p-5 sm:p-6">
           <div className="flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-brand-primary to-brand-secondary shadow-glow">
@@ -217,7 +227,7 @@ const ManualAttendance = () => {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
             <label className="block">
               <span className="mb-2 block text-sm font-semibold text-white">Class</span>
               <select
@@ -252,6 +262,17 @@ const ManualAttendance = () => {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-white">Date</span>
+              <input
+                type="date"
+                value={selectedDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(event) => setSelectedDate(event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-[#10172A] px-4 py-3 text-sm text-white outline-none focus:border-brand-primary/70"
+              />
             </label>
           </div>
 

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiArrowRight, FiLock, FiMail } from "react-icons/fi";
 import { Eye, EyeOff } from "lucide-react";
@@ -8,15 +8,20 @@ import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
-    password: "",
-    role: "admin"
+    password: ""
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -48,7 +53,7 @@ const Login = () => {
     <AuthLayout
       badge="Welcome back"
       title="Login to ClassTrack"
-      subtitle="Choose your role and enter your credentials to continue."
+      subtitle="Enter your credentials to continue."
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
         <label className="block">
@@ -98,9 +103,9 @@ const Login = () => {
         </div>
 
         <div className="flex items-center justify-end">
-          <button type="button" onClick={() => alert("Password reset is managed by institution administrators. Please contact your administrator.")} className="text-sm font-semibold text-[#C8D2FF] transition hover:text-white cursor-pointer">
+          <Link to="/forgot-password" className="text-sm font-semibold text-[#C8D2FF] transition hover:text-white cursor-pointer">
             Forgot password?
-          </button>
+          </Link>
         </div>
 
         {error && (

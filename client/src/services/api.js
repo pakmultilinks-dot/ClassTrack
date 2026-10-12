@@ -3,7 +3,8 @@ import axios from "axios";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 const api = axios.create({
-  baseURL: API_BASE_URL
+  baseURL: API_BASE_URL,
+  timeout: 30000
 });
 
 api.interceptors.request.use((config) => {
@@ -19,7 +20,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthEndpoint = error.config?.url?.includes("/auth/login") || error.config?.url?.includes("/auth/register");
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem("token");
       localStorage.removeItem("classtrack_token");
       window.dispatchEvent(new Event("classtrack:session-expired"));

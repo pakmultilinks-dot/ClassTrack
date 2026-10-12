@@ -1,6 +1,5 @@
-import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { FiArrowLeft, FiMail, FiSend } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 import AuthLayout from "../components/AuthLayout";
 
 const ForgotPassword = () => {

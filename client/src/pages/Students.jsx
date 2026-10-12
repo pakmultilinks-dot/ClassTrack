@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
-import { FiEdit3, FiPlus, FiSearch, FiTrash2, FiUserCheck, FiX } from "react-icons/fi";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { FiEdit3, FiPlus, FiSearch, FiTrash2, FiUpload, FiUserCheck, FiX } from "react-icons/fi";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { getClasses } from "../services/classService";
-import { createStudent, deleteStudent, getStudents, updateStudent } from "../services/studentService";
+import { bulkImportStudents, createStudent, deleteStudent, getStudents, updateStudent } from "../services/studentService";
 
 const emptyStudentForm = {
   studentId: "",
@@ -16,15 +17,20 @@ const emptyStudentForm = {
 };
 
 const Students = () => {
+  const [searchParams] = useSearchParams();
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [modalMode, setModalMode] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [formData, setFormData] = useState(emptyStudentForm);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const fileInputRef = useRef(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -149,9 +155,67 @@ const Students = () => {
 
     try {
       await deleteStudent(student.id);
+      setSuccess(`${student.fullName} deactivated.`);
+      setTimeout(() => setSuccess(""), 4000);
       await loadData();
     } catch (apiError) {
       setError(apiError.response?.data?.message || "Unable to deactivate student.");
+    }
+  };
+
+  const parseCsv = (text) => {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+    return lines.slice(1).map((line) => {
+      const values = line.split(",").map((v) => v.trim());
+      const row = {};
+      headers.forEach((h, i) => {
+        row[h] = values[i] || "";
+      });
+      const classMatch = classes.find(
+        (c) => `${c.className} - ${c.section}`.toLowerCase() === (row.class || "").toLowerCase()
+          || c.className.toLowerCase() === (row.class || "").toLowerCase()
+      );
+      return {
+        studentId: row.studentid || row.id || "",
+        fullName: row.fullname || row.name || "",
+        email: row.email || "",
+        phone: row.phone || "",
+        rollNumber: row.rollnumber || row.roll || "",
+        classId: classMatch?.id || row.classid || "",
+        section: row.section || classMatch?.section || ""
+      };
+    });
+  };
+
+  const handleFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    setError("");
+    setSuccess("");
+
+    try {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      if (rows.length === 0) {
+        setError("CSV is empty or has no data rows. Expected header: studentId, fullName, email, phone, rollNumber, class, section");
+        return;
+      }
+      const result = await bulkImportStudents(rows);
+      setImportResult(result);
+      if (result.summary?.imported > 0) {
+        setSuccess(`Imported ${result.summary.imported} students.`);
+        setTimeout(() => setSuccess(""), 5000);
+        await loadData();
+      }
+    } catch (apiError) {
+      setError(apiError.response?.data?.message || "Import failed. Check the CSV format and try again.");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -162,16 +226,34 @@ const Students = () => {
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.28em] text-brand-primary">Student records</p>
             <h1 className="mt-2 text-3xl font-extrabold text-white">Students Management</h1>
-            <p className="mt-2 text-sm text-brand-muted">Manage enrolled students and face registration readiness.</p>
+            <p className="mt-2 text-sm text-brand-muted">Manage enrolled students and face registration readiness. CSV columns: studentId, fullName, email, phone, rollNumber, class, section.</p>
           </div>
-          <button
-            type="button"
-            onClick={openAddModal}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-primary to-brand-secondary px-5 py-3 text-sm font-bold text-white shadow-glow"
-          >
-            <FiPlus />
-            Add Student
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:border-brand-primary/50 disabled:opacity-60"
+            >
+              <FiUpload />
+              {importing ? "Importing..." : "Import CSV"}
+            </button>
+            <button
+              type="button"
+              onClick={openAddModal}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-primary to-brand-secondary px-5 py-3 text-sm font-bold text-white shadow-glow"
+            >
+              <FiPlus />
+              Add Student
+            </button>
+          </div>
         </section>
 
         <section className="glass-panel rounded-3xl p-5">
@@ -191,6 +273,25 @@ const Students = () => {
           {error && (
             <div className="mt-5 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm font-semibold text-red-100">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mt-5 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-100">
+              {success}
+            </div>
+          )}
+
+          {importResult && importResult.summary?.failed > 0 && (
+            <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+              <p className="text-sm font-bold text-amber-100">
+                {importResult.summary.failed} rows failed:
+              </p>
+              <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs text-amber-100/80">
+                {(importResult.errors || []).slice(0, 20).map((e, i) => (
+                  <li key={i}>Row {e.row}: {e.message}</li>
+                ))}
+              </ul>
             </div>
           )}
 

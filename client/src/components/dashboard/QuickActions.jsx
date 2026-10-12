@@ -1,14 +1,17 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { FiCamera, FiPlus, FiSearch, FiUsers } from "react-icons/fi";
 
 const actions = [
-  { label: "Add Student", icon: FiPlus },
-  { label: "Create Class", icon: FiUsers },
-  { label: "Register Face", icon: FiCamera },
-  { label: "Scan Attendance", icon: FiSearch }
+  { label: "Add Student", icon: FiPlus, to: "/students" },
+  { label: "Create Class", icon: FiUsers, to: "/classes" },
+  { label: "Register Face", icon: FiCamera, to: "/face-registration" },
+  { label: "Scan Attendance", icon: FiSearch, to: "/attendance-scan" }
 ];
 
 const QuickActions = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="glass-panel rounded-3xl p-5">
       <div className="flex items-center justify-between">
@@ -26,6 +29,7 @@ const QuickActions = () => {
             <motion.button
               key={action.label}
               type="button"
+              onClick={() => navigate(action.to)}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.06, duration: 0.35 }}

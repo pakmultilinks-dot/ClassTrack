@@ -19,3 +19,8 @@ export const deleteStudent = async (id) => {
   const response = await api.delete(`/students/${id}`);
   return response.data;
 };
+
+export const bulkImportStudents = async (students) => {
+  const response = await api.post("/students/bulk", { students });
+  return response.data;
+};

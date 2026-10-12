@@ -3,7 +3,7 @@ const Attendance = require("../models/Attendance");
 const Student = require("../models/Student");
 const ClassModel = require("../models/Class");
 const { findBestFaceMatch } = require("../utils/faceMatcher");
-const { findAll, insertOne } = require("../config/fileDb");
+const { findAll, insertOne, updateById } = require("../config/fileDb");
 
 const allowedStatuses = ["present", "absent", "late"];
 const activeFilter = { isActive: { $ne: false } };
@@ -317,9 +317,96 @@ const getClassAttendance = async (req, res, next) => {
   }
 };
 
+const bulkMarkAttendance = async (req, res, next) => {
+  try {
+    const classId = typeof req.body.classId === "string" ? req.body.classId.trim() : "";
+    const subject = typeof req.body.subject === "string" ? req.body.subject.trim() : "";
+    const dateInput = typeof req.body.date === "string" ? req.body.date.trim() : "";
+    const records = req.body.records;
+
+    if (!classId || !subject || !Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Class id, subject, and a non-empty records array are required"
+      });
+    }
+
+    if (records.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: "Maximum 500 records per bulk request"
+      });
+    }
+
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(dateInput) ? dateInput : getTodayDate();
+
+    const classItem = await getActiveClass(classId);
+    if (!classItem) {
+      return res.status(404).json({ success: false, message: "Class not found" });
+    }
+
+    const results = { marked: 0, updated: 0, skipped: 0, errors: [] };
+
+    for (const entry of records) {
+      const studentId = typeof entry.studentId === "string" ? entry.studentId.trim() : "";
+      const status = typeof entry.status === "string" ? entry.status.trim().toLowerCase() : "";
+
+      if (!studentId || !allowedStatuses.includes(status)) {
+        results.errors.push({ studentId: studentId || null, message: "Invalid student id or status" });
+        continue;
+      }
+
+      const student = await getActiveStudent(studentId);
+      if (!student || student.classId !== classId) {
+        results.errors.push({ studentId, message: "Student not found in this class" });
+        continue;
+      }
+
+      const existing = await findExistingAttendance(studentId, classId, subject, date);
+      if (existing) {
+        const updatedFields = { status, method: "manual", markedBy: req.user.id, updatedAt: new Date().toISOString() };
+        if (isTestEnvironment()) {
+          updateById("attendance", existing.id, updatedFields);
+        } else {
+          await Attendance.findByIdAndUpdate(existing._id, updatedFields);
+        }
+        results.updated += 1;
+      } else {
+        const record = {
+          studentId: student.id,
+          classId: classItem.id,
+          studentName: student.fullName,
+          studentCode: student.studentId,
+          className: classItem.className,
+          section: student.section || classItem.section,
+          subject,
+          date,
+          status,
+          method: "manual",
+          confidence: null,
+          markedBy: req.user.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        if (isTestEnvironment()) {
+          insertOne("attendance", record);
+        } else {
+          await Attendance.create(record);
+        }
+        results.marked += 1;
+      }
+    }
+
+    res.status(200).json({ success: true, date, results });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   scanFaceAttendance,
   markManualAttendance,
+  bulkMarkAttendance,
   getAllAttendance,
   getStudentAttendance,
   getClassAttendance

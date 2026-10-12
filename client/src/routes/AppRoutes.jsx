@@ -19,6 +19,7 @@ import Settings from "../pages/Settings";
 import Students from "../pages/Students";
 import StudentDashboard from "../pages/StudentDashboard";
 import TeacherDashboard from "../pages/TeacherDashboard";
+import NotFound from "../pages/NotFound";
 
 const RoleDashboard = () => {
   const { user } = useAuth();
@@ -132,6 +133,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         )}
       />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

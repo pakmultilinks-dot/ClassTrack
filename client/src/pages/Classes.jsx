@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FiBookOpen, FiEdit3, FiPlus, FiSearch, FiTrash2, FiUsers, FiX } from "react-icons/fi";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { createClass, deleteClass, getClasses, updateClass } from "../services/classService";
+import { getTeachers } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 
 const emptyClassForm = {
@@ -22,14 +23,22 @@ const Classes = () => {
   const [modalMode, setModalMode] = useState(null);
   const [selectedClass, setSelectedClass] = useState(null);
   const [formData, setFormData] = useState(emptyClassForm);
+  const [teachers, setTeachers] = useState([]);
+  const [teacherMap, setTeacherMap] = useState({});
 
   const loadClasses = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const data = await getClasses();
-      setClasses(data.classes || []);
+      const [classData, teacherData] = await Promise.all([
+        getClasses(),
+        user?.role === "admin" ? getTeachers().catch(() => ({ teachers: [] })) : Promise.resolve({ teachers: [] })
+      ]);
+      setClasses(classData.classes || []);
+      const list = teacherData.teachers || [];
+      setTeachers(list);
+      setTeacherMap(list.reduce((m, t) => ({ ...m, [t.id]: t.fullName }), {}));
     } catch (apiError) {
       setError(apiError.response?.data?.message || "Unable to load classes. Please make sure the backend is running.");
     } finally {
@@ -231,7 +240,7 @@ const Classes = () => {
                     <FiUsers />
                     <span>Teacher ID</span>
                   </div>
-                  <p className="mt-2 break-all text-sm font-semibold text-white">{classItem.teacherId || "Not assigned"}</p>
+                  <p className="mt-2 break-all text-sm font-semibold text-white">{teacherMap[classItem.teacherId] || classItem.teacherName || "Not assigned"}</p>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -302,15 +311,32 @@ const Classes = () => {
               </label>
 
               <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-semibold text-white">Teacher ID</span>
-                <input
-                  name="teacherId"
-                  value={formData.teacherId}
-                  onChange={handleChange}
-                  placeholder="teacher user id"
-                  required
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-brand-muted focus:border-brand-primary/70"
-                />
+                <span className="mb-2 block text-sm font-semibold text-white">Teacher</span>
+                {teachers.length > 0 ? (
+                  <select
+                    name="teacherId"
+                    value={formData.teacherId}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-2xl border border-white/10 bg-[#10172A] px-4 py-3 text-sm text-white outline-none focus:border-brand-primary/70"
+                  >
+                    <option value="">Select teacher</option>
+                    {teachers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.fullName} ({t.email})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    name="teacherId"
+                    value={formData.teacherId}
+                    onChange={handleChange}
+                    placeholder="Teacher user ID"
+                    required
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-brand-muted focus:border-brand-primary/70"
+                  />
+                )}
               </label>
 
               <label className="block sm:col-span-2">

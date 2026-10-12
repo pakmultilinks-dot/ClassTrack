@@ -1,18 +1,13 @@
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { FiAlertTriangle, FiCheckCircle, FiLayers, FiTrendingUp, FiUsers } from "react-icons/fi";
+import { FiAlertTriangle, FiCheckCircle, FiLayers, FiRefreshCw, FiTrendingUp, FiUsers } from "react-icons/fi";
 import DashboardLayout from "../layouts/DashboardLayout";
 import QuickActions from "../components/dashboard/QuickActions";
 import RecentActivity from "../components/dashboard/RecentActivity";
 import StatCard from "../components/dashboard/StatCard";
 import { useAuth } from "../context/AuthContext";
 import { getSummaryReport } from "../services/reportService";
-
-const statuses = [
-  { label: "Backend Connected", value: "Online", tone: "text-emerald-300" },
-  { label: "Face Module Ready", value: "Ready", tone: "text-[#C8D2FF]" },
-  { label: "Reports Active", value: "Active", tone: "text-emerald-300" }
-];
+import api from "../services/api";
 
 const defaultSummary = {
   totalStudents: 0,
@@ -44,25 +39,31 @@ const Dashboard = () => {
   const [summary, setSummary] = useState(defaultSummary);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summaryError, setSummaryError] = useState("");
+  const [backendOnline, setBackendOnline] = useState(null);
+
+  const loadSummary = async () => {
+    setLoadingSummary(true);
+    setSummaryError("");
+
+    try {
+      const [healthRes, data] = await Promise.all([
+        api.get("/health").catch(() => null),
+        getSummaryReport()
+      ]);
+      setBackendOnline(!!healthRes?.data?.success);
+      setSummary(data.summary || defaultSummary);
+    } catch (error) {
+      setBackendOnline(false);
+      setSummaryError(
+        error.response?.data?.message ||
+        "Unable to load dashboard data. Please check your connection and try again."
+      );
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
 
   useEffect(() => {
-    const loadSummary = async () => {
-      setLoadingSummary(true);
-      setSummaryError("");
-
-      try {
-        const data = await getSummaryReport();
-        setSummary(data.summary || defaultSummary);
-      } catch (error) {
-        setSummaryError(
-          error.response?.data?.message ||
-          "Unable to load dashboard data. Please check your connection and try again."
-        );
-      } finally {
-        setLoadingSummary(false);
-      }
-    };
-
     loadSummary();
   }, []);
 
@@ -101,13 +102,23 @@ const Dashboard = () => {
     }
   ]), [summary]);
 
-  const liveStatuses = summaryError
-    ? [
-        { label: "Backend Connected", value: "Offline", tone: "text-red-300" },
-        { label: "Face Module Ready", value: "Waiting", tone: "text-amber-300" },
-        { label: "Reports Active", value: "Unavailable", tone: "text-red-300" }
-      ]
-    : statuses;
+  const liveStatuses = [
+    {
+      label: "Backend Connected",
+      value: backendOnline === null ? "Checking..." : backendOnline ? "Online" : "Offline",
+      tone: backendOnline === null ? "text-brand-muted" : backendOnline ? "text-emerald-300" : "text-red-300"
+    },
+    {
+      label: "Face Module Ready",
+      value: summaryError ? "Waiting" : "Ready",
+      tone: summaryError ? "text-amber-300" : "text-[#C8D2FF]"
+    },
+    {
+      label: "Reports Active",
+      value: summaryError ? "Unavailable" : "Active",
+      tone: summaryError ? "text-red-300" : "text-emerald-300"
+    }
+  ];
 
   return (
     <DashboardLayout>
@@ -139,7 +150,7 @@ const Dashboard = () => {
                     <FiTrendingUp size={24} />
                   </span>
                   <div>
-                    <p className="text-sm text-brand-muted">Today performance</p>
+                    <p className="text-sm text-brand-muted">Overall present rate</p>
                     <p className="text-2xl font-extrabold text-white">
                       {loadingSummary ? "..." : `${presentRate}%`}
                     </p>
@@ -157,8 +168,15 @@ const Dashboard = () => {
         </motion.section>
 
         {summaryError && (
-          <div className="rounded-3xl border border-red-400/30 bg-red-500/10 p-5 text-sm font-semibold leading-6 text-red-100">
-            {summaryError}
+          <div className="flex items-center justify-between gap-4 rounded-3xl border border-red-400/30 bg-red-500/10 p-5 text-sm font-semibold leading-6 text-red-100">
+            <span>{summaryError}</span>
+            <button
+              type="button"
+              onClick={loadSummary}
+              className="flex flex-none items-center gap-2 rounded-full border border-red-400/40 px-4 py-2 text-xs font-bold text-red-100 transition hover:bg-red-500/20"
+            >
+              <FiRefreshCw /> Retry
+            </button>
           </div>
         )}
 

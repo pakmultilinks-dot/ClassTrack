@@ -45,6 +45,13 @@ const registerUser = async (req, res, next) => {
       });
     }
 
+    if (role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin accounts can only be created by an existing administrator"
+      });
+    }
+
     const normalizedEmail = email;
     const userExists = isTestEnvironment()
       ? findAll("users").find((savedUser) => savedUser.email && savedUser.email.toLowerCase() === normalizedEmail)
@@ -174,8 +181,29 @@ const getMe = async (req, res) => {
   });
 };
 
+const getTeachers = async (req, res, next) => {
+  try {
+    const teachers = isTestEnvironment()
+      ? findAll("users").filter((u) => u.role === "teacher" && u.isActive !== false)
+      : await User.find({ role: "teacher", isActive: { $ne: false } });
+
+    res.status(200).json({
+      success: true,
+      count: teachers.length,
+      teachers: teachers.map((t) => ({
+        id: t.id || t._id,
+        fullName: t.fullName,
+        email: t.email
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
-  getMe
+  getMe,
+  getTeachers
 };

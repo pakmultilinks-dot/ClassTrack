@@ -24,3 +24,8 @@ export const getClassAttendance = async (classId) => {
   const response = await api.get(`/attendance/class/${classId}`);
   return response.data;
 };
+
+export const bulkMarkAttendance = async (data) => {
+  const response = await api.post("/attendance/bulk", data);
+  return response.data;
+};

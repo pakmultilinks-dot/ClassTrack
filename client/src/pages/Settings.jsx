@@ -1,28 +1,19 @@
-import { useEffect, useState } from "react";
-import { FiAlertTriangle, FiBell, FiCheckCircle, FiSave, FiSliders } from "react-icons/fi";
+import { useState } from "react";
+import { FiBell, FiCheckCircle, FiDatabase, FiSave, FiSliders } from "react-icons/fi";
 import DashboardLayout from "../layouts/DashboardLayout";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import Toast from "../components/ui/Toast";
 
-const accents = [
-  { label: "Indigo", value: "indigo", className: "from-brand-primary to-brand-secondary" },
-  { label: "Cyan", value: "cyan", className: "from-cyan-400 to-brand-primary" },
-  { label: "Emerald", value: "emerald", className: "from-emerald-400 to-cyan-400" },
-  { label: "Violet", value: "violet", className: "from-fuchsia-400 to-brand-secondary" }
-];
-
 const Settings = () => {
-  const [accent, setAccent] = useState(() => localStorage.getItem("classtrack_accent") || "indigo");
   const [notifications, setNotifications] = useState(() => ({
     attendanceAlerts: localStorage.getItem("classtrack_notify_attendance") !== "false",
-    reportDigest: localStorage.getItem("classtrack_notify_reports") !== "false",
-    systemStatus: localStorage.getItem("classtrack_notify_system") !== "false"
+    reportDigest: localStorage.getItem("classtrack_notify_reports") !== "false"
   }));
+  const [alertThreshold, setAlertThreshold] = useState(() => {
+    const saved = parseInt(localStorage.getItem("classtrack_alert_threshold") || "75", 10);
+    return Number.isNaN(saved) ? 75 : saved;
+  });
   const [toast, setToast] = useState(null);
-
-  useEffect(() => {
-    localStorage.setItem("classtrack_accent", accent);
-  }, [accent]);
 
   const toggleNotification = (key) => {
     setNotifications((current) => ({
@@ -34,8 +25,8 @@ const Settings = () => {
   const saveSettings = () => {
     localStorage.setItem("classtrack_notify_attendance", String(notifications.attendanceAlerts));
     localStorage.setItem("classtrack_notify_reports", String(notifications.reportDigest));
-    localStorage.setItem("classtrack_notify_system", String(notifications.systemStatus));
-    setToast({ type: "success", message: "Settings saved locally." });
+    localStorage.setItem("classtrack_alert_threshold", String(alertThreshold));
+    setToast({ type: "success", message: "Settings saved." });
   };
 
   return (
@@ -55,13 +46,13 @@ const Settings = () => {
               <p className="text-sm font-bold uppercase tracking-[0.28em] text-brand-primary">Settings</p>
               <h1 className="mt-3 text-3xl font-extrabold text-white sm:text-5xl">ClassTrack Preferences</h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-brand-muted sm:text-base">
-                Tune local display preferences and notification settings for the dashboard experience.
+                Tune display preferences and attendance alert settings.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="grid gap-5 xl:grid-cols-2">
           <div className="glass-panel rounded-3xl p-5 sm:p-6">
             <div className="flex items-center gap-3">
               <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-primary/15 text-brand-primary">
@@ -69,7 +60,7 @@ const Settings = () => {
               </span>
               <div>
                 <h2 className="text-xl font-extrabold text-white">Appearance</h2>
-                <p className="text-sm text-brand-muted">Switch theme and preview accent choices.</p>
+                <p className="text-sm text-brand-muted">Switch between dark and light theme.</p>
               </div>
             </div>
 
@@ -77,94 +68,86 @@ const Settings = () => {
               <p className="mb-3 text-sm font-semibold text-white">Theme mode</p>
               <ThemeToggle />
             </div>
+          </div>
 
-            <div className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5">
-              <p className="text-sm font-semibold text-white">Accent color</p>
-              <p className="mt-2 text-xs text-brand-muted">Note: Colors are locked to ClassTrack brand teal/amber in this layout.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {accents.map((item) => (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => setAccent(item.value)}
-                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold transition ${
-                      accent === item.value
-                        ? "border-brand-primary/50 bg-brand-primary/10 text-white"
-                        : "border-white/10 bg-white/5 text-brand-muted hover:text-white"
-                    }`}
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className={`h-8 w-8 rounded-full bg-gradient-to-br ${item.className}`} />
-                      {item.label}
-                    </span>
-                    {accent === item.value && <FiCheckCircle />}
-                  </button>
-                ))}
+          <div className="glass-panel rounded-3xl p-5 sm:p-6">
+            <div className="flex items-center gap-3">
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-primary/15 text-brand-primary">
+                <FiBell />
+              </span>
+              <div>
+                <h2 className="text-xl font-extrabold text-white">Attendance alerts</h2>
+                <p className="text-sm text-brand-muted">Control low-attendance warnings in the top bar.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {[
+                ["attendanceAlerts", "Low attendance badge", "Show a count badge on the bell icon when students fall below the threshold."],
+                ["reportDigest", "Report reminders", "Highlight the reports section when alerts are active."]
+              ].map(([key, label, description]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleNotification(key)}
+                  className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-brand-primary/40"
+                >
+                  <span>
+                    <span className="block text-sm font-bold text-white">{label}</span>
+                    <span className="mt-1 block text-xs leading-5 text-brand-muted">{description}</span>
+                  </span>
+                  <span className={`h-7 w-12 flex-none rounded-full p-1 transition ${
+                    notifications[key] ? "bg-brand-primary" : "bg-white/10"
+                  }`}>
+                    <span className={`block h-5 w-5 rounded-full bg-white transition ${
+                      notifications[key] ? "translate-x-5" : "translate-x-0"
+                    }`} />
+                  </span>
+                </button>
+              ))}
+
+              <label className="block rounded-2xl border border-white/10 bg-white/5 p-4">
+                <span className="block text-sm font-bold text-white">Alert threshold</span>
+                <span className="mt-1 block text-xs text-brand-muted">Students below this attendance % trigger an alert.</span>
+                <div className="mt-3 flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="50"
+                    max="95"
+                    value={alertThreshold}
+                    onChange={(e) => setAlertThreshold(parseInt(e.target.value, 10))}
+                    className="w-full accent-brand-primary"
+                  />
+                  <span className="w-14 text-right text-sm font-bold text-white">{alertThreshold}%</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-2">
+          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-emerald-100">
+            <div className="flex items-start gap-3">
+              <FiDatabase className="mt-1 flex-none" />
+              <div>
+                <p className="font-extrabold flex items-center gap-2">
+                  Cloud database active <FiCheckCircle />
+                </p>
+                <p className="mt-2 text-sm leading-6">
+                  Attendance data is persisted to secure cloud storage and survives server restarts and redeployments.
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-5">
-            <div className="glass-panel rounded-3xl p-5 sm:p-6">
-              <div className="flex items-center gap-3">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-primary/15 text-brand-primary">
-                  <FiBell />
-                </span>
-                <div>
-                  <h2 className="text-xl font-extrabold text-white">Notifications</h2>
-                  <p className="text-sm text-brand-muted">Local preferences for future notification surfaces.</p>
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                {[
-                  ["attendanceAlerts", "Attendance alerts", "Notify me about low attendance and duplicate marks."],
-                  ["reportDigest", "Report digest", "Show reminders for summary and export reviews."],
-                  ["systemStatus", "System status", "Surface backend and module readiness updates."]
-                ].map(([key, label, description]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => toggleNotification(key)}
-                    className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-brand-primary/40"
-                  >
-                    <span>
-                      <span className="block text-sm font-bold text-white">{label}</span>
-                      <span className="mt-1 block text-xs leading-5 text-brand-muted">{description}</span>
-                    </span>
-                    <span className={`h-7 w-12 rounded-full p-1 transition ${
-                      notifications[key] ? "bg-brand-primary" : "bg-white/10"
-                    }`}>
-                      <span className={`block h-5 w-5 rounded-full bg-white transition ${
-                        notifications[key] ? "translate-x-5" : "translate-x-0"
-                      }`} />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-amber-400/30 bg-amber-500/10 p-5 text-amber-100">
-              <div className="flex items-start gap-3">
-                <FiAlertTriangle className="mt-1 flex-none" />
-                <div>
-                  <p className="font-extrabold">Local JSON database mode</p>
-                  <p className="mt-2 text-sm leading-6">
-                    This ClassTrack version stores backend data in a local JSON file. Back up your project folder before clearing local files or moving machines.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={saveSettings}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-primary to-brand-secondary px-5 py-4 text-sm font-bold text-white shadow-glow"
-            >
-              <FiSave />
-              Save Settings
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={saveSettings}
+            className="inline-flex items-center justify-center gap-2 rounded-3xl bg-gradient-to-r from-brand-primary to-brand-secondary px-5 py-4 text-sm font-bold text-white shadow-glow"
+          >
+            <FiSave />
+            Save Settings
+          </button>
         </section>
       </div>
     </DashboardLayout>
